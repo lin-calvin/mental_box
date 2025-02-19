@@ -1,3 +1,4 @@
+import traceback
 from functools import partial
 import base64
 import io
@@ -5,7 +6,7 @@ import PIL.Image
 import litellm
 import gradio
 import peewee
-import fastapi
+from fastapi import FastAPI,File,UploadFile,HTTPException
 
 api_key = "19003893b371a8faeb6f09bbba97e037.4gjxGFg7x5o8KqpU"
 
@@ -23,7 +24,6 @@ def stream(llm, *args, tracker=None, **kwargs):
             tracker(i.choices[0].delta.content or "")
     return litellm.stream_chunk_builder(chunks,messages=kwargs.get("messages"))
 
-if
 vlm = make_llm(
     base_url="https://open.bigmodel.cn/api/paas/v4/",
     model="openai/glm-4v",
@@ -36,7 +36,6 @@ emo_llm = make_llm(
     model="openai/glm-4v",
     api_key=api_key,
 )
-if
 # get images from gradio interface, ocr them via vlm and pass to emollm
 
 
@@ -82,4 +81,20 @@ def interface_fn(image):
 interface = gradio.Interface(
     fn=interface_fn, inputs=[gradio.Image(type="pil")], outputs="text"
 )
-interface.launch()
+
+
+# FastAPI application and endpoint
+app = FastAPI()
+
+@app.post("/run")
+async def upload_image(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        image = PIL.Image.open(io.BytesIO(contents))
+        result = interface_fn(image)
+        return {"result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={"error":traceback.format_exc()})
+app = gradio.mount_gradio_app(app, interface, path="/gradio")
+
+
