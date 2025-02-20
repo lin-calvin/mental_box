@@ -5,9 +5,10 @@ import io
 import PIL.Image
 import litellm
 import gradio
-import peewee
-from fastapi import FastAPI,File,UploadFile,HTTPException
 
+from fastapi import FastAPI,File,UploadFile,HTTPException
+import peewee
+import strawberry
 api_key = "19003893b371a8faeb6f09bbba97e037.4gjxGFg7x5o8KqpU"
 
 
@@ -85,6 +86,12 @@ interface = gradio.Interface(
 
 # FastAPI application and endpoint
 app = FastAPI()
+#graphql endpoint via strawberry
+@strawberry.type
+class Query:
+    @strawberry.field
+    def hello(self) -> str:
+        return "Hello, world!"
 
 @app.post("/run")
 async def upload_image(file: UploadFile = File(...)):
