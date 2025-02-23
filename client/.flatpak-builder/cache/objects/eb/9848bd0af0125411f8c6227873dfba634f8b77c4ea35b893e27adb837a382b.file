@@ -1,0 +1,10 @@
+[Application]
+name=io.github.mentalbox.device
+runtime=org.freedesktop.Platform/x86_64/24.08
+sdk=org.freedesktop.Sdk/x86_64/24.08
+command=main.py
+
+[Context]
+shared=network;ipc;
+sockets=x11;wayland;
+devices=dri;all;

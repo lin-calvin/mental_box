@@ -26,9 +26,9 @@ def stream(llm, *args, tracker=None, **kwargs):
     return litellm.stream_chunk_builder(chunks,messages=kwargs.get("messages"))
 
 vlm = make_llm(
-    base_url="https://open.bigmodel.cn/api/paas/v4/",
-    model="openai/glm-4v",
-    api_key=api_key,
+    base_url="https://api.siliconflow.cn/v1/",
+    model="openai/Pro/Qwen/Qwen2-VL-7B-Instruct",
+    api_key="sk-whfsgciephkpcjrbmijijiqealycbbycxkwbkwgkyptofbah",
 )
 
 
@@ -50,7 +50,10 @@ def get_result(response: litellm.ModelResponse):
     return response.choices[0].message.content
 g=get_result
 def interface_fn(image):
+    if not image:
+        return ""
     image.thumbnail((1080, 1080))
+    image.show()
     image.save(image := io.BytesIO(), format="PNG")
     image_data = image_to_dataurl(image.getvalue())
     message = [
@@ -66,7 +69,7 @@ def interface_fn(image):
         }
     ]
     ocr_result = g(vlm(messages=message))
-    print(ocr_result)
+    print("OCR_RESULT:"+ocr_result)
     # now, pass the ocr result to the emotion model
     message = [
         {"role":"system","content":[{"type":"text","text":"请你扮演为一名专业心理咨询师，根据以下文本内容，帮助用户解决心理问题。"}]},
@@ -77,6 +80,7 @@ def interface_fn(image):
             ],
         }
     ]
+    print("EMO_MESSAGE:"+str(message))
     response = g(stream(emo_llm,tracker=print,messages=message))
     return response
 interface = gradio.Interface(
@@ -103,5 +107,3 @@ async def upload_image(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail={"error":traceback.format_exc()})
 app = gradio.mount_gradio_app(app, interface, path="/gradio")
-
-

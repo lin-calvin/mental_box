@@ -1,6 +1,8 @@
+#!/bin/env python
 import typing
 import aioserial
 import aiohttp
+from escpos.printer import Escpos
 import asyncio
 import cv2
 import io
@@ -31,7 +33,7 @@ class AioPrinter(Escpos):
 
 
 
-    def __init__(self,serial:aioserial.AioSerial *args, **kwargs) -> None:
+    def __init__(self,serial:aioserial.AioSerial,*args, **kwargs) -> None:
         """Init with empty output list."""
         self.serial=serial
         Escpos.__init__(self, *args, **kwargs)
@@ -60,12 +62,12 @@ class AioPrinter(Escpos):
         del self.tasks[:]
 
     def close(self) -> None:
-        """Close not implemented for Dummy printer."""
+
         pass
 
 
 def capture_image() -> bytes:
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture("/dev/video2")
     ret, frame = cap.read()
     cap.release()
     if not ret:
@@ -75,7 +77,8 @@ def capture_image() -> bytes:
         raise Exception("Failed to encode image")
     return buffer.tobytes()
 async def print_text(text, printer: AioPrinter):
-    printer.text(text)
+    printer.block_text(text,font="0")
+    print(printer.tasks)
     await printer.run_tasks()
 async def run_inference(image_bytes: bytes,):
     async with aiohttp.ClientSession() as session:
@@ -87,23 +90,28 @@ async def run_inference(image_bytes: bytes,):
         async with session.post(url, data=data) as response:
             if response.status != 200:
                 raise Exception(f"error")
-            resp_json = await response.json()['result']
+            resp_json = (await response.json())['result']
             return resp_json
-
-async def main():
-    mcu_serial=aioserial.AioSerial(port='/dev/ttyUSB0',baudrate=9600)#
-    printer_serial=aioserial.AioSerial(port='/dev/ttyUSB1',baudrate=9600)#
+def initrc():
+    mcu_serial=aioserial.AioSerial(port='/dev/ttyACM1',baudrate=9600)#
+    printer_serial=aioserial.AioSerial(port='/dev/ttyACM0',baudrate=9600)#
     printer=AioPrinter(printer_serial)
+    printer.magic.encoding="GBK"
+    printer.magic.encoder=type("a",(),{"encode":lambda  text,encoding:text.encode(encoding)})# This make Chinese work
+    printer.magic.disabled=True
+    printer.profile.profile_data["fonts"]['0']['columns']=30
+    return locals()
+async def main():
+    globals().update(initrc())
     while 1:
         mcu_command=await mcu_serial.readline_async()
         print(mcu_command)
         match mcu_command:
-            case b'start':
+            case b'start\n':
                 image=capture_image()
                 text=await run_inference(image)
                 await print_text(text,printer)
                 await mcu_serial.write_async(b'ok\n')
 if __name__ == "__main__":
     url = "http://127.0.0.1:8000/run"
-    image_bytes = capture_image()
-    asyncio.run(upload_image(image_bytes, url))
+    asyncio.run(main())

@@ -18,8 +18,8 @@ modules:
   - name: main
     buildsystem: simple
     build-commands:
-      - pip3 install --upgrade pip
-      - pip3 install -r requirements.txt --target=/app/lib/python3.9/site-packages
+      - pip3 install --upgrade pip -i https://mirror.sjtu.edu.cn/pypi/web/simple
+      - pip3 install -r requirements.txt  -i https://mirror.sjtu.edu.cn/pypi/web/simple  --prefix=/app 
       - install -D main.py /app/bin/main.py
       - install -D requirements.txt /app/share/myapp/requirements.txt
     sources:

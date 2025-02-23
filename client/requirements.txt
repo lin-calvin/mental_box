@@ -1,0 +1,3 @@
+aiohttp
+aioserial
+opencv-python

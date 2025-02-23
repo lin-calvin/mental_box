@@ -1,0 +1,6 @@
+fastapi~=0.115.8
+gradio~=5.16.2
+litellm~=1.61.11
+peewee~=3.17.7
+Pillow
+strawberry-graphql[fastapi]
