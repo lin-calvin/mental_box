@@ -94,8 +94,8 @@ app = FastAPI()
 @strawberry.type
 class Query:
     @strawberry.field
-    def hello(self) -> str:
-        return "Hello, world!"
+    def call_count(self) -> int:
+        return 
 
 @app.post("/run")
 async def upload_image(file: UploadFile = File(...)):

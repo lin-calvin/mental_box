@@ -65,6 +65,20 @@ class AioPrinter(Escpos):
 
         pass
 
+def code2function(code_str: str):
+    # Create a dictionary to capture the local namespace
+    local_namespace = {}
+    
+    # Execute the code string within the local namespace
+    exec(code_str, globals(), local_namespace)
+    
+    # The function should now be in the local namespace, so we retrieve it
+    # Assuming the code string defines a function named 'func'
+    if 'initrc' in local_namespace:
+        return local_namespace['initrc']
+    else:
+        raise ValueError("The code string does not define a function named 'func'.")
+
 
 def capture_image() -> bytes:
     cap = cv2.VideoCapture("/dev/video2")
@@ -92,16 +106,21 @@ async def run_inference(image_bytes: bytes,):
                 raise Exception(f"error")
             resp_json = (await response.json())['result']
             return resp_json
-def initrc():
-    mcu_serial=aioserial.AioSerial(port='/dev/ttyACM1',baudrate=9600)#
-    printer_serial=aioserial.AioSerial(port='/dev/ttyACM0',baudrate=9600)#
-    printer=AioPrinter(printer_serial)
-    printer.magic.encoding="GBK"
-    printer.magic.encoder=type("a",(),{"encode":lambda  text,encoding:text.encode(encoding)})# This make Chinese work
-    printer.magic.disabled=True
-    printer.profile.profile_data["fonts"]['0']['columns']=30
-    return locals()
+# def initrc():
+#     mcu_serial=aioserial.AioSerial(port='/dev/ttyACM1',baudrate=9600)#
+#     printer_serial=aioserial.AioSerial(port='/dev/ttyACM0',baudrate=9600)#
+#     printer=AioPrinter(printer_serial)
+#     printer.magic.encoding="GBK"
+#     printer.magic.encoder=type("a",(),{"encode":lambda  text,encoding:text.encode(encoding)})# This make Chinese work
+#     printer.magic.disabled=True
+#     printer.profile.profile_data["fonts"]['0']['columns']=30
+#     return locals()
+
 async def main():
+    import sys
+    #open initrc.py from args and prase it
+    code=open(sys.argv, "r").read()
+    initrc=code2function(code)
     globals().update(initrc())
     while 1:
         mcu_command=await mcu_serial.readline_async()
