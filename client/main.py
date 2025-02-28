@@ -119,7 +119,7 @@ async def run_inference(image_bytes: bytes,):
 async def main():
     import sys
     #open initrc.py from args and prase it
-    code=open(sys.argv, "r").read()
+    code=open(sys.argv[1], "r").read()
     initrc=code2function(code)
     globals().update(initrc())
     while 1:
