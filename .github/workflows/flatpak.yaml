@@ -25,11 +25,11 @@ jobs:
           # Adjust the manifest file name if needed (e.g., flatpak-manifest.yaml)
           sudo flatpak-builder --force-clean --install-deps-from=flathub --arch=aarch64 build-dir client/io.github.mentalbox.device.yaml
 
-      - name: Zip Repository
-        run: zip -r repo.zip .
+      - name: make tar Repository
+        run: tar -czvf  repo.tar.gz .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: repo-zip
-          path: repo.zip
+          name: repo-tar
+          path: repo.tar.gz
