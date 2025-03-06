@@ -1,0 +1,34 @@
+name: Build Flatpak
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder zip
+
+      - name: Build Flatpak for aarch64
+        run: |
+          # Adjust the manifest file name if needed (e.g., flatpak-manifest.yaml)
+          flatpak-builder --force-clean --arch=aarch64 build-dir client/io.github.mentalbox.device.yaml
+
+      - name: Zip Repository
+        run: zip -r repo.zip .
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: repo-zip
+          path: repo.zip

@@ -1,3 +1,5 @@
+import json
+import asyncio
 import traceback
 from functools import partial
 import base64
@@ -5,51 +7,92 @@ import io
 import PIL.Image
 import litellm
 import gradio
-
-from fastapi import FastAPI,File,UploadFile,HTTPException
+import typing
+from fastapi import FastAPI, File, UploadFile, HTTPException
 import peewee
+import playhouse
+import playhouse.db_url
 import strawberry
+from strawberry.fastapi import GraphQLRouter
+import datetime
+import models
+from models import Record, Tag, UnTaggedRecord
 api_key = "19003893b371a8faeb6f09bbba97e037.4gjxGFg7x5o8KqpU"
-
 
 def make_llm(**kwargs):
     assert "message" not in kwargs
-    return partial(litellm.completion, **kwargs)
+    return partial(litellm.acompletion, **kwargs)
 
-def stream(llm, *args, tracker=None, **kwargs):
+async def stream(llm, *args, tracker=None, **kwargs):
     print(kwargs)
-    chunks=[]
-    for i in (resp := llm(*args, stream=True,**kwargs)):
+    chunks = []
+    async for i in await llm(*args, stream=True, **kwargs):
         chunks.append(i)
         if tracker:
             tracker(i.choices[0].delta.content or "")
-    return litellm.stream_chunk_builder(chunks,messages=kwargs.get("messages"))
+    return litellm.stream_chunk_builder(chunks, messages=kwargs.get("messages"))
 
 vlm = make_llm(
     base_url="https://api.siliconflow.cn/v1/",
     model="openai/Pro/Qwen/Qwen2-VL-7B-Instruct",
     api_key="sk-whfsgciephkpcjrbmijijiqealycbbycxkwbkwgkyptofbah",
 )
-
-
-emo_llm = make_llm(
-    base_url="https://open.bigmodel.cn/api/paas/v4/",
-    model="openai/glm-4v",
-    api_key=api_key,
+llm =  make_llm(
+    base_url="https://api.siliconflow.cn/v1/",
+    model="openai/Pro/Qwen/Qwen2-VL-7B-Instruct",
+    api_key="sk-whfsgciephkpcjrbmijijiqealycbbycxkwbkwgkyptofbah",
 )
+tagging_llm =llm
+emo_llm = llm
 # get images from gradio interface, ocr them via vlm and pass to emollm
 
+async def tagging_record(record: Record):
+    # Build the session text with query and output
+    text = f"Q: {record.query}\nA:\n{record.output}"
+    tag_str = g(await tagging_llm(messages=[
+        {
+            "role": "system",
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        "You are a helpful assistant. "
+                        "Return a valid JSON object with a field 'tags' containing an array of tags. "
+                        "Example: {\"tags\": [\"taga\", \"tagb\"]}"
+                    )
+                }
+            ]
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        f"Extract tags from the following psychological counseling session text and return them in JSON format: {text}"
+                    )
+                }
+            ]
+        }
+    ]))
+    print(tag_str)
+    tags = json.loads(tag_str)['tags']
+    tag_instances = [Tag.create(name=tag) for tag in tags]
+    record.tags.add(tag_instances)
 
-def image_to_dataurl(data,type="png"):
+def image_to_dataurl(data, type="png"):
     # 对PNG字节进行base64编码
     encoded_png = base64.b64encode(data).decode('utf-8')
     # 创建data URL
     data_url = f"data:image/{type};base64,{encoded_png}"
     return data_url
+
 def get_result(response: litellm.ModelResponse):
     return response.choices[0].message.content
-g=get_result
-def interface_fn(image):
+
+g = get_result
+
+async def interface_fn(image):
     if not image:
         return ""
     image.thumbnail((1080, 1080))
@@ -60,7 +103,7 @@ def interface_fn(image):
         {
             "role": "user",
             "content": [
-                {"type":"text","text":"输出图片中的文字，不要输出其他内容。"},
+                {"type": "text", "text": "输出图片中的文字，不要输出其他内容。"},
                 {
                     "type": "image_url",
                     "image_url": {"url": f"{image_data}"},
@@ -68,11 +111,11 @@ def interface_fn(image):
             ],
         }
     ]
-    ocr_result = g(vlm(messages=message))
-    print("OCR_RESULT:"+ocr_result)
+    ocr_result = g(await vlm(messages=message))
+    print("OCR_RESULT:" + ocr_result)
     # now, pass the ocr result to the emotion model
     message = [
-        {"role":"system","content":[{"type":"text","text":"请你扮演为一名专业心理咨询师，根据以下文本内容，帮助用户解决心理问题。"}]},
+        {"role": "system", "content": [{"type": "text", "text": "请你扮演为一名专业心理咨询师，根据以下文本内容，帮助用户解决心理问题。尽量使用简短的一两句话解决问题"}]},
         {
             "role": "user",
             "content": [
@@ -80,30 +123,62 @@ def interface_fn(image):
             ],
         }
     ]
-    print("EMO_MESSAGE:"+str(message))
-    response = g(stream(emo_llm,tracker=print,messages=message))
+    print("EMO_MESSAGE:" + str(message))
+    # trace it
+    response = g(await stream(emo_llm, tracker=print, messages=message))
+    record = Record.create(query=ocr_result, output=response)
+    asyncio.create_task(tagging_record( record))
+
+
     return response
+
 interface = gradio.Interface(
     fn=interface_fn, inputs=[gradio.Image(type="pil")], outputs="text"
 )
 
+db = playhouse.db_url.connect("sqlite:///db.sqlite")
+models.bind_db(db)
 
 # FastAPI application and endpoint
 app = FastAPI()
-#graphql endpoint via strawberry
+# graphql endpoint via strawberry
+@strawberry.type
+class RecordType:
+    id: int
+    created_at: datetime.datetime
+    query: str
+    output: str
+    tags: typing.Optional[typing.List[str]] = None
+
+
 @strawberry.type
 class Query:
     @strawberry.field
     def call_count(self) -> int:
-        return 
+        return Record.select().count()
+
+    @strawberry.field
+    def records(self) -> typing.List[RecordType]:
+        records = []
+        for record in Record.select():
+            tags=[]
+            data=record.__data__|{}
+            for i in record.tags:
+                tags.append(i.__data__['name'])
+            data['tags']=tags
+            records.append(RecordType(**data))
+        return records
+
+app.include_router(GraphQLRouter(strawberry.Schema(Query)), prefix="/graphql")
 
 @app.post("/run")
 async def upload_image(file: UploadFile = File(...)):
     try:
         contents = await file.read()
         image = PIL.Image.open(io.BytesIO(contents))
-        result = interface_fn(image)
+        result = await interface_fn(image)
         return {"result": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail={"error":traceback.format_exc()})
+        raise HTTPException(status_code=500, detail={"error": traceback.format_exc()})
+
 app = gradio.mount_gradio_app(app, interface, path="/gradio")
