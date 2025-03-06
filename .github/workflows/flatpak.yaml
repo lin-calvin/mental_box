@@ -20,8 +20,9 @@ jobs:
 
       - name: Build Flatpak for aarch64
         run: |
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           # Adjust the manifest file name if needed (e.g., flatpak-manifest.yaml)
-          flatpak-builder --force-clean --arch=aarch64 build-dir client/io.github.mentalbox.device.yaml
+          flatpak-builder --force-clean --install-deps-from=flathub --arch=aarch64 build-dir client/io.github.mentalbox.device.yaml
 
       - name: Zip Repository
         run: zip -r repo.zip .
