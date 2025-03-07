@@ -149,7 +149,10 @@ class RecordType:
     query: str
     output: str
     tags: typing.Optional[typing.List[str]] = None
-
+@strawberry.type
+class TagStats:
+    tag: str
+    count: int
 
 @strawberry.type
 class Query:
@@ -168,9 +171,24 @@ class Query:
             data['tags']=tags
             records.append(RecordType(**data))
         return records
+    @strawberry.field
+    def tags_stats(self) -> typing.List[TagStats]:
+        tags = {}
+        for record in Record.select():
+            for tag in record.tags:
+                tags[tag.name] = tags.get(tag.name, 0) + 1
+        print([TagStats(tag=tag, count=count) for tag, count in tags.items()])
+        return [TagStats(tag=tag, count=count) for tag, count in tags.items()]
 
 app.include_router(GraphQLRouter(strawberry.Schema(Query)), prefix="/graphql")
-
+def tags_stats() -> typing.List[dict[str,int]]:
+    tags = {}
+    for record in Record.select():
+        for tag in record.tags:
+            tags[tag.name] = tags.get(tag.name, 0) + 1
+    #print([TagStats(tag=tag, count=count) for tag, count in tags.items()])
+    return tags# [TagStats(tag=tag, count=count) for tag, count in tags.items()]
+tags_stats()
 @app.post("/run")
 async def upload_image(file: UploadFile = File(...)):
     try:
