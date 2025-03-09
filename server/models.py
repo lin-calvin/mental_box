@@ -4,6 +4,11 @@ class Tag(Model):
     id = AutoField()
     name = TextField()
 
+class ConfigTable(Model):
+    key = TextField(primary_key=True)
+    value = TextField()
+    description = TextField()
+    name = TextField()
 
 class Record(Model):
     id = AutoField()
@@ -22,4 +27,3 @@ def bind_db(db):
         if isinstance(i,type) and issubclass(i,Model) and i!=Model:
             i.bind(db)
             i.create_table()
-

@@ -16,8 +16,10 @@ import strawberry
 from strawberry.fastapi import GraphQLRouter
 import datetime
 import models
-from models import Record, Tag, UnTaggedRecord
-api_key = "19003893b371a8faeb6f09bbba97e037.4gjxGFg7x5o8KqpU"
+from models import Record, Tag, UnTaggedRecord, ConfigTable
+import const
+import sys
+import os
 
 def make_llm(**kwargs):
     assert "message" not in kwargs
@@ -31,19 +33,36 @@ async def stream(llm, *args, tracker=None, **kwargs):
         if tracker:
             tracker(i.choices[0].delta.content or "")
     return litellm.stream_chunk_builder(chunks, messages=kwargs.get("messages"))
+def get_config(key):
+    return ConfigTable.get_or_create(key=key, defaults= const.CONFIG_DEFAULTS[key])[0].value
 
-vlm = make_llm(
-    base_url="https://api.siliconflow.cn/v1/",
-    model="openai/Pro/Qwen/Qwen2-VL-7B-Instruct",
-    api_key="sk-whfsgciephkpcjrbmijijiqealycbbycxkwbkwgkyptofbah",
-)
-llm =  make_llm(
-    base_url="https://api.siliconflow.cn/v1/",
-    model="openai/Pro/Qwen/Qwen2-VL-7B-Instruct",
-    api_key="sk-whfsgciephkpcjrbmijijiqealycbbycxkwbkwgkyptofbah",
-)
-tagging_llm =llm
-emo_llm = llm
+def do_condig(code_str: str):
+    # Create a dictionary to capture the local namespace
+    local_namespace = {}
+    # Execute the code string within the local namespace
+    exec(code_str, globals(), local_namespace)
+
+    # The function should now be in the local namespace, so we retrieve it
+    # Assuming the code string defines a function named 'func'
+
+    return globals().update(local_namespace)
+
+# vlm = make_llm(
+#     base_url="https://api.siliconflow.cn/v1/",
+#     model="openai/Pro/Qwen/Qwen2-VL-7B-Instruct",
+#     api_key="sk-whfsgciephkpcjrbmijijiqealycbbycxkwbkwgkyptofbah",
+# )
+# llm =  make_llm(
+#     base_url="https://api.siliconflow.cn/v1/",
+#     model="openai/Pro/Qwen/Qwen2-VL-7B-Instruct",
+#     api_key="sk-whfsgciephkpcjrbmijijiqealycbbycxkwbkwgkyptofbah",
+# )
+# tagging_llm =llm
+# emo_llm = llm
+
+# db = playhouse.db_url.connect("sqlite:///db.sqlite")
+do_condig(open(os.environ["CONFIG_PATH"]).read())
+models.bind_db(db)
 # get images from gradio interface, ocr them via vlm and pass to emollm
 
 async def tagging_record(record: Record):
@@ -96,7 +115,6 @@ async def interface_fn(image):
     if not image:
         return ""
     image.thumbnail((1080, 1080))
-    image.show()
     image.save(image := io.BytesIO(), format="PNG")
     image_data = image_to_dataurl(image.getvalue())
     message = [
@@ -112,10 +130,12 @@ async def interface_fn(image):
         }
     ]
     ocr_result = g(await vlm(messages=message))
+
     print("OCR_RESULT:" + ocr_result)
     # now, pass the ocr result to the emotion model
+    prompt=get_config("mental_prompt")
     message = [
-        {"role": "system", "content": [{"type": "text", "text": "请你扮演为一名专业心理咨询师，根据以下文本内容，帮助用户解决心理问题。尽量使用简短的一两句话解决问题"}]},
+        {"role": "system", "content": [{"type": "text", "text": prompt}]},
         {
             "role": "user",
             "content": [
@@ -136,8 +156,6 @@ interface = gradio.Interface(
     fn=interface_fn, inputs=[gradio.Image(type="pil")], outputs="text"
 )
 
-db = playhouse.db_url.connect("sqlite:///db.sqlite")
-models.bind_db(db)
 
 # FastAPI application and endpoint
 app = FastAPI()
@@ -153,7 +171,12 @@ class RecordType:
 class TagStats:
     tag: str
     count: int
-
+@strawberry.type
+class ConfigType:
+    key: str
+    value: str
+    name: str
+    description: str
 @strawberry.type
 class Query:
     @strawberry.field
@@ -179,8 +202,31 @@ class Query:
                 tags[tag.name] = tags.get(tag.name, 0) + 1
         print([TagStats(tag=tag, count=count) for tag, count in tags.items()])
         return [TagStats(tag=tag, count=count) for tag, count in tags.items()]
+    @strawberry.field
+    def config(self,key:typing.Optional[str]=None) -> typing.Optional[list[ConfigType]]:
+        print(key)
+        if not key:
+            return [ConfigType(key=i.key,value=i.value,name=i.name,description=i.description) for i in ConfigTable.select()]
+        item=ConfigTable.get_or_none(key=key)
+        if item!=None:
+            print(item)
+            return [ConfigType(key=item.key,value=item.value,name=item.name,description=item.description)]
+        return None
+@strawberry.type
+class Mutation:
+    @strawberry.mutation
+    def set_config(self, key: str, value: typing.Optional[str]=None) -> int:
+        print(key, value)
+        item,create=ConfigTable.get_or_create(key=key, defaults={"value": value,"name":key,"description":""})
+        if value==None:
+            item.delete_instance()
+        if not create:
+            item.value=value
+            item.save()
+        return 1
 
-app.include_router(GraphQLRouter(strawberry.Schema(Query)), prefix="/graphql")
+
+app.include_router(GraphQLRouter(strawberry.Schema(Query,Mutation)), prefix="/graphql")
 def tags_stats() -> typing.List[dict[str,int]]:
     tags = {}
     for record in Record.select():
