@@ -5,6 +5,7 @@ on:
     branches: [main]
     # only build when server/ edit
     paths:
+      - ".github/workflows/docker.yaml"
       - "server/**"
   pull_request:
     branches: [main]
