@@ -8,7 +8,7 @@ import PIL.Image
 import litellm
 import gradio
 import typing
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException,StreamingResponse
 import peewee
 import playhouse
 import playhouse.db_url
@@ -113,10 +113,11 @@ g = get_result
 
 async def interface_fn(image):
     if not image:
-        return ""
+        raise Exception("No image provided")
     image.thumbnail((1080, 1080))
     image.save(image := io.BytesIO(), format="PNG")
     image_data = image_to_dataurl(image.getvalue())
+    print(2)
     message = [
         {
             "role": "user",
@@ -129,7 +130,14 @@ async def interface_fn(image):
             ],
         }
     ]
-    ocr_result = g(await vlm(messages=message))
+    ocr_result=""
+    async for i in await vlm(messages=message,stream=True):
+        print(3)
+        data=i.choices[0].delta.content or ""
+        ocr_result+=data
+        yield ('ocr',data)
+    
+    
 
     print("OCR_RESULT:" + ocr_result)
     # now, pass the ocr result to the emotion model
@@ -145,15 +153,31 @@ async def interface_fn(image):
     ]
     print("EMO_MESSAGE:" + str(message))
     # trace it
-    response = g(await stream(emo_llm, tracker=print, messages=message))
+    result=""
+    async for  i in await stream(emo_llm, tracker=print, messages=message):
+        data=i.choices[0].delta.content or ""
+        result+=data
+        yield ('final',data)
+
     record = Record.create(query=ocr_result, output=response)
     asyncio.create_task(tagging_record( record))
+    yield ('result',result)
+    # if not streaming:
+    #     return response
 
-
-    return response
+async def gradio_fn(image):
+    print(1)
+    priv=""
+    async for i in interface_fn(image):
+        yield i[1]
+        print(i[1])
+        if priv!=i[0]:
+            yield "#########"
+        priv=i[0]
+    
 
 interface = gradio.Interface(
-    fn=interface_fn, inputs=[gradio.Image(type="pil")], outputs="text"
+    fn=gradio_fn, inputs=[gradio.Image(type="pil")], outputs="text"
 )
 
 
@@ -236,13 +260,25 @@ def tags_stats() -> typing.List[dict[str,int]]:
     return tags# [TagStats(tag=tag, count=count) for tag, count in tags.items()]
 tags_stats()
 @app.post("/run")
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(file: UploadFile = File(...),stream: bool = False):
     try:
         contents = await file.read()
         image = PIL.Image.open(io.BytesIO(contents))
-        result = await interface_fn(image)
-        return {"result": result}
+        resp=interface_fn(image)
+        if stream:
+            return StreamingResponse(resp)
+        else:
+            async for i in resp:
+                if i[0]=='result':
+                    return {"result": i[1]}
+        #result = await interface_fn(image)
+        #return {"result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail={"error": traceback.format_exc()})
 
 app = gradio.mount_gradio_app(app, interface, path="/gradio")
+
+if __name__=="__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0")
+    

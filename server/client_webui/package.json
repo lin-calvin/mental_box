@@ -1,0 +1,23 @@
+{
+  "name": "client_webui",
+  "version": "1.0.0",
+  "description": "A web application utilizing LitElement, esbuild, and Tailwind CSS.",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --outfile=public/bundle.js --minify",
+    "watch": "esbuild src/index.ts --bundle --outfile=public/bundle.js --watch",
+    "start": "esbuild src/index.ts --bundle --outfile=public/bundle.js --watch & serve public"
+  },
+  "dependencies": {
+    "lit": "^2.0.0",
+    "tailwindcss": "^2.0.0",
+    "esbuild": "^0.12.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.0.0",
+    "serve": "^13.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
