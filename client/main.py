@@ -2,6 +2,7 @@
 import typing
 import aioserial
 import aiohttp
+from aiohttp import web
 from escpos.printer import Escpos
 import asyncio
 import cv2

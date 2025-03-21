@@ -1,26 +1,34 @@
-import json
+
 import asyncio
+import base64
+import datetime
+import io
+import json
+import os
+import sys
 import traceback
 from functools import partial
-import base64
-import io
-import PIL.Image
-import litellm
-import gradio
 import typing
-from fastapi import FastAPI, File, UploadFile, HTTPException,StreamingResponse
+from aiostream.stream import map as amap
+from aiostream import async_
+from uuid import uuid4
+
+import gradio
+import litellm
 import peewee
-import playhouse
+import PIL.Image
 import playhouse.db_url
 import strawberry
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from sse_starlette.sse import EventSourceResponse
 from strawberry.fastapi import GraphQLRouter
-import datetime
-import models
-from models import Record, Tag, UnTaggedRecord, ConfigTable
-import const
-import sys
-import os
 
+import const
+import models
+from models import ConfigTable, Record, Tag, UnTaggedRecord
+
+
+pending_task:dict[str,typing.Awaitable]={}
 def make_llm(**kwargs):
     assert "message" not in kwargs
     return partial(litellm.acompletion, **kwargs)
@@ -154,12 +162,12 @@ async def interface_fn(image):
     print("EMO_MESSAGE:" + str(message))
     # trace it
     result=""
-    async for  i in await stream(emo_llm, tracker=print, messages=message):
+    async for  i in await emo_llm(messages=message,stream=True):
         data=i.choices[0].delta.content or ""
         result+=data
         yield ('final',data)
 
-    record = Record.create(query=ocr_result, output=response)
+    record = Record.create(query=ocr_result, output=result)
     asyncio.create_task(tagging_record( record))
     yield ('result',result)
     # if not streaming:
@@ -259,14 +267,27 @@ def tags_stats() -> typing.List[dict[str,int]]:
     #print([TagStats(tag=tag, count=count) for tag, count in tags.items()])
     return tags# [TagStats(tag=tag, count=count) for tag, count in tags.items()]
 tags_stats()
+@app.get("/stream/{id}")
+async def stream(id):
+    try:
+        task=pending_task[id]
+        del pending_task[id]
+        return EventSourceResponse(task)   
+    except KeyError:
+        return HTTPException(404)
 @app.post("/run")
-async def upload_image(file: UploadFile = File(...),stream: bool = False):
+async def upload_image(file: UploadFile = File(...),stream: bool = True):
     try:
         contents = await file.read()
         image = PIL.Image.open(io.BytesIO(contents))
         resp=interface_fn(image)
         if stream:
-            return StreamingResponse(resp)
+        
+            async def streamer():
+                async for i in resp:
+                    yield {"event":i[0],"data":i[1]}
+            pending_task[id:=str(111    )]=streamer()
+            return id  
         else:
             async for i in resp:
                 if i[0]=='result':
@@ -280,5 +301,5 @@ app = gradio.mount_gradio_app(app, interface, path="/gradio")
 
 if __name__=="__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0")
+    uvicorn.run(app, host="127.0.0.1")
     
