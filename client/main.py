@@ -7,8 +7,16 @@ from escpos.printer import Escpos
 import asyncio
 import cv2
 import io
+import os
+from sse import aiosselient,Event
+from aiohttp import web
 
+from aiohttp_sse import sse_response
+from json import dumps as json_dumps
 
+base_url = "http://127.0.0.1:8000/"
+
+events=asyncio.Queue()
 
 class AioPrinter(Escpos):
     """Dummy printer.
@@ -102,11 +110,17 @@ async def run_inference(image_bytes: bytes,):
                        io.BytesIO(image_bytes),
                        filename="captured.png",
                        content_type='image/png')
-        async with session.post(url, data=data) as response:
+        async with session.post(os.path.join(base_url,"run"), data=data) as response:
             if response.status != 200:
+                print(await response.text())
                 raise Exception(f"error")
-            resp_json = (await response.json())['result']
-            return resp_json
+            taskid = (await response.json())
+        sseclient=aiosselient(os.path.join(base_url,"stream",taskid))
+        async for i in sseclient:
+            event=(i.event,i.data)
+            await events.put(event)
+        return event[1]
+        #return resp_json
 # def initrc():
 #     mcu_serial=aioserial.AioSerial(port='/dev/ttyACM1',baudrate=9600)#
 #     printer_serial=aioserial.AioSerial(port='/dev/ttyACM0',baudrate=9600)#
@@ -116,7 +130,39 @@ async def run_inference(image_bytes: bytes,):
 #     printer.magic.disabled=True
 #     printer.profile.profile_data["fonts"]['0']['columns']=30
 #     return locals()
+async def eventsource(request: web.Request) -> web.StreamResponse:
+    async with sse_response(request) as resp:
+        while resp.is_connected():
+            event_type,data=await events.get()
+            await resp.send(json_dumps({"event":event_type,"data":data}))
+            #await resp.send(data,event=event_type)
+    return resp
+async def test_sse(request: web.Request):
+    async with sse_response(request) as resp:
+        for i in range(5):
+            await resp.send(json_dumps({"event":"progress","data":i}))
+            await asyncio.sleep(0.1)
+        for i in range(5):
+            await resp.send(json_dumps({"event":"result","data":i}))
+            await asyncio.sleep(0.1)
+        await resp.send(json_dumps({"event":"done","data":i}))
+        await asyncio.Future()
+    return resp
+async def test(_):
+    print(1)
+    await run_inference(cv2.imencode(".png", cv2.imread("a.png"))[1])
+async def run():
+    image=capture_image()
+    text=await run_inference(image)
+    await print_text(text)
 
+app = web.Application()
+app.router.add_route("GET","/test",test)
+app.router.add_route("GET","/event", eventsource)
+app.router.add_route("GET","/run",run)
+app.router.add_route("GET","/test_sse",test_sse)
+async def runapp(): await web._run_app(app)
+web.run_app(app)
 async def main():
     import sys
     #open initrc.py from args and prase it
@@ -129,9 +175,11 @@ async def main():
         match mcu_command:
             case b'start\n':
                 image=capture_image()
-                text=await run_inference(image)
+                text=await run_inference(image) 
                 await print_text(text,printer)
                 await mcu_serial.write_async(b'ok\n')
+
 if __name__ == "__main__":
-    url = "http://127.0.0.1:8000/run"
+    base_url = "http://127.0.0.1:8000/"
     asyncio.run(main())
+

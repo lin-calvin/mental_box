@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import {default as state} from 'store.js'
-
+import {default as state} from './store.js'
+window.store = state;
 
 @customElement('client-ui')
 export class ClientUI extends LitElement {

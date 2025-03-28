@@ -286,7 +286,7 @@ async def upload_image(file: UploadFile = File(...),stream: bool = True):
             async def streamer():
                 async for i in resp:
                     yield {"event":i[0],"data":i[1]}
-            pending_task[id:=str(111    )]=streamer()
+            pending_task[id:=str(uuid4())]=streamer()
             return id  
         else:
             async for i in resp:
