@@ -4,3 +4,5 @@ litellm~=1.61.11
 peewee~=3.17.7
 Pillow
 strawberry-graphql[fastapi]
+aiostream==0.6.4
+sse_starlette

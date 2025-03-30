@@ -1,3 +1,4 @@
 aiohttp
 aioserial
 opencv-python
+aiohttp_sse
