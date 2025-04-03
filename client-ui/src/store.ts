@@ -42,7 +42,7 @@ const store = configureStore({
   reducer: reducers,
 });
 
-let eventstream = new EventSource(BASE_URL + "test_sse");
+let eventstream = new EventSource(BASE_URL + "event");
 eventstream.onmessage = ((event) => {
   console.log("Received event: ", event.data);
   store.dispatch(serverState.actions.pushServerState(JSON.parse(event.data)));

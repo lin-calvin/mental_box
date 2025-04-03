@@ -104,6 +104,7 @@ async def print_text(text, printer: AioPrinter):
     print(printer.tasks)
     await printer.run_tasks()
 async def run_inference(image_bytes: bytes,):
+    res=""
     async with aiohttp.ClientSession() as session:
         data = aiohttp.FormData()
         data.add_field('file',
@@ -117,7 +118,8 @@ async def run_inference(image_bytes: bytes,):
             taskid = (await response.json())
         sseclient=aiosselient(os.path.join(base_url,"stream",taskid))
         async for i in sseclient:
-            event=(i.event,i.data)
+            res+=i.data
+            event=(i.event,res)
             await events.put(event)
         return event[1]
         #return resp_json
@@ -131,8 +133,11 @@ async def run_inference(image_bytes: bytes,):
 #     printer.profile.profile_data["fonts"]['0']['columns']=30
 #     return locals()
 async def eventsource(request: web.Request) -> web.StreamResponse:
+
     async with sse_response(request) as resp:
+        await resp.send("1")
         while resp.is_connected():
+
             event_type,data=await events.get()
             await resp.send(json_dumps({"event":event_type,"data":data}))
             #await resp.send(data,event=event_type)
@@ -150,7 +155,8 @@ async def test_sse(request: web.Request):
     return resp
 async def test(_):
     print(1)
-    await run_inference(cv2.imencode(".png", cv2.imread("a.png"))[1])
+    asyncio.create_task(run_inference(cv2.imencode(".png", cv2.imread("a.png"))[1]))
+    return web.Response(text="ok")
 async def run():
     image=capture_image()
     text=await run_inference(image)
