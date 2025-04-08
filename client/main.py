@@ -10,7 +10,6 @@ import io
 import os
 from sse import aiosselient,Event
 from aiohttp import web
-
 from aiohttp_sse import sse_response
 from json import dumps as json_dumps
 
@@ -135,7 +134,7 @@ async def run_inference(image_bytes: bytes,):
 async def eventsource(request: web.Request) -> web.StreamResponse:
 
     async with sse_response(request) as resp:
-        await resp.send("1")
+        #await resp.send("1")
         while resp.is_connected():
 
             event_type,data=await events.get()
@@ -161,12 +160,14 @@ async def run():
     image=capture_image()
     text=await run_inference(image)
     await print_text(text)
-
+    await events.put(("print_finish",""))
 app = web.Application()
 app.router.add_route("GET","/test",test)
 app.router.add_route("GET","/event", eventsource)
 app.router.add_route("GET","/run",run)
 app.router.add_route("GET","/test_sse",test_sse)
+app.add_routes([web.static('/ui', "static")])
+
 async def runapp(): await web._run_app(app)
 web.run_app(app)
 async def main():

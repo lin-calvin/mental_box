@@ -5,14 +5,19 @@ import { default as store, Stage, changeStage } from "../store.js";
 import install from "@twind/with-web-components";
 import config from "../../twind.config.js";
 const withTwind = install(config);
-
 @customElement("page-welcome")
 @withTwind
 export class WelcomePage extends LitElement {
-
+  connectedCallback(): void {
+    if(!store.getState()._CLEAN){
+    store.dispatch({ type: 'RESET' }); //calls the root reducer with RESET as action!
+  }
+  super.connectedCallback();
+    
+  }
   async start() {
     await fetch(BASE_URL + "test");
-    console
+    
     window.store.dispatch(changeStage(Stage.READING));
   }
 

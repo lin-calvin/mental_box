@@ -6,9 +6,9 @@ import install from "@twind/with-web-components";
 import config from "../../twind.config.js";
 const withTwind = install(config);
 console.log(process.env.NODE_ENV);
-@customElement("page-reading")
+@customElement("page-responding")
 @withTwind
-export class ReadingPage extends LitElement {
+export class RespondingPage extends LitElement {
     constructor() {
         super();
         // store.subscribe((() => {
@@ -20,7 +20,9 @@ export class ReadingPage extends LitElement {
                 store.subscribe((() => {
           this.update();
         }));
+        setTimeout(()=>{store.dispatch(changeStage(Stage.IDLE))},10000);
       }
+
       render() {
         
         const data=store.getState().serverState.data;
@@ -28,7 +30,7 @@ export class ReadingPage extends LitElement {
         return html`
         
 <div class="text-white bg-black h-screen items-center">
-  <div class="p-10 text-3xl">Scaning your papper</div>
+  <div class="p-10 text-3xl">System is writing respond,</div>
   <div class="flex justify-center items-center h-screen italic">
     <p>${data.data}</p>
   </div>

@@ -9,7 +9,7 @@ import { BASE_URL } from "./const.js";
 enum Stage {
   IDLE,
   READING,
-  PRINTING,
+  RESPONDING,
 }
 
 const appState = createSlice({
@@ -37,15 +37,23 @@ const reducers = combineReducers({
   appState: appState.reducer,
 });
 
+const rootReducer = (state, action) => {
+  if (action.type === 'RESET') {
+     return reducers(undefined, action);
+  }
+  
+  return reducers(state,action);
+ };
 const store = configureStore({
   devTools: true,
-  reducer: reducers,
+  reducer: rootReducer,
 });
-
 let eventstream = new EventSource(BASE_URL + "event");
 eventstream.onmessage = ((event) => {
   console.log("Received event: ", event.data);
+  let data = JSON.parse(event.data)
   store.dispatch(serverState.actions.pushServerState(JSON.parse(event.data)));
+  store.dispatch(appState.actions.changeStage({ ocr: Stage.READING, final: Stage.RESPONDING, print_finish:Stage.IDLE }[data.event]));
 }).bind(this);
 
 export const { pushServerState } = serverState.actions;
