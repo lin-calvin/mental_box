@@ -3,7 +3,7 @@ app-id: io.github.mentalbox.device
 runtime: org.freedesktop.Platform
 runtime-version: "24.08"
 sdk: org.freedesktop.Sdk
-command: main.py
+command: /app/main.py
 build-options:
   build-args:
     - --share=network
