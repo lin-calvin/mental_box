@@ -143,7 +143,7 @@ async def interface_fn(image):
         print(3)
         data=i.choices[0].delta.content or ""
         ocr_result+=data
-        yield ('ocr',data)
+        yield ('ocr',ocr_result)
     
     
 
@@ -165,7 +165,7 @@ async def interface_fn(image):
     async for  i in await emo_llm(messages=message,stream=True):
         data=i.choices[0].delta.content or ""
         result+=data
-        yield ('final',data)
+        yield ('final',result)
 
     record = Record.create(query=ocr_result, output=result)
     asyncio.create_task(tagging_record( record))
@@ -282,7 +282,6 @@ async def upload_image(file: UploadFile = File(...),stream: bool = True):
         image = PIL.Image.open(io.BytesIO(contents))
         resp=interface_fn(image)
         if stream:
-        
             async def streamer():
                 async for i in resp:
                     yield {"event":i[0],"data":i[1]}

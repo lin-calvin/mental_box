@@ -117,8 +117,7 @@ async def run_inference(image_bytes: bytes,):
             taskid = (await response.json())
         sseclient=aiosselient(os.path.join(base_url,"stream",taskid))
         async for i in sseclient:
-            res+=i.data
-            event=(i.event,res)
+            event=(i.event,i.data)
             await events.put(event)
         return event[1]
         #return resp_json
