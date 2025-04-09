@@ -28,6 +28,8 @@ jobs:
           # Adjust the manifest file name if needed (e.g., flatpak-manifest.yaml)
           sudo flatpak-builder --force-clean --install-deps-from=flathub --arch=aarch64 --repo ./repo build-dir client/io.github.mentalbox.device.yaml
           # export to .flatpak bundle
+      - name: Export Flatpak Bundle
+        run: |
           sudo flatpak build-bundle ./repo device.flatpak io.github.mentalbox.device
 
       # - name: make tar Repository
