@@ -1,0 +1,13 @@
+setup.py
+client/__main__.py
+client/aiosseclient.py
+client/sse.py
+client.egg-info/PKG-INFO
+client.egg-info/SOURCES.txt
+client.egg-info/dependency_links.txt
+client.egg-info/requires.txt
+client.egg-info/top_level.txt
+client/static/index.
+client/static/index.html
+client/static/index.js
+client/static/index.js.map

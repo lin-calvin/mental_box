@@ -30,7 +30,10 @@ export class RespondingPage extends LitElement {
         return html`
         
 <div class="text-white bg-black h-screen items-center">
-  <div class="p-10 text-3xl">System is writing respond,</div>
+  <svg class="mr-3 size-5 animate-spin ..." viewBox="0 0 24 24">
+    <!-- ... -->
+  </svg>
+  <div class="p-10 text-3xl">系统正在基于你的输入生成回复</div>
   <div class="flex justify-center items-center h-screen italic">
     <p>${data.data}</p>
   </div>

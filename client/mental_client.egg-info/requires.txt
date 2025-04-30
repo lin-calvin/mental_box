@@ -1,5 +1,4 @@
 aiohttp
+aiohttp_sse
 aioserial
 opencv-python
-aiohttp_sse
-python-escpos

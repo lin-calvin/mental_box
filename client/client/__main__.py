@@ -12,11 +12,11 @@ from sse import aiosselient,Event
 from aiohttp import web
 from aiohttp_sse import sse_response
 from json import dumps as json_dumps
-
+import sys
 base_url = "http://127.0.0.1:8000/"
-
+dummy_mode = False
 events=asyncio.Queue()
-
+devices={}
 class AioPrinter(Escpos):
     """Dummy printer.
 
@@ -89,9 +89,8 @@ def code2function(code_str: str):
 
 
 def capture_image() -> bytes:
-    cap = cv2.VideoCapture("/dev/video2")
-    ret, frame = cap.read()
-    cap.release()
+    ret, frame = camera.read()
+
     if not ret:
         raise Exception("Failed to capture image")
     ret, buffer = cv2.imencode(".png", frame)
@@ -131,11 +130,9 @@ async def run_inference(image_bytes: bytes,):
 #     printer.profile.profile_data["fonts"]['0']['columns']=30
 #     return locals()
 async def eventsource(request: web.Request) -> web.StreamResponse:
-
     async with sse_response(request) as resp:
         #await resp.send("1")
         while resp.is_connected():
-
             event_type,data=await events.get()
             await resp.send(json_dumps({"event":event_type,"data":data}))
             #await resp.send(data,event=event_type)
@@ -155,8 +152,11 @@ async def test(_):
     print(1)
     asyncio.create_task(run_inference(cv2.imencode(".png", cv2.imread("a.png"))[1]))
     return web.Response(text="ok")
-async def run():
-    image=capture_image()
+async def run(_):
+    if dummy_mode:
+        image=cv2.imencode(".png", cv2.imread("a.png"))
+    else:
+        image=capture_image()
     text=await run_inference(image)
     await print_text(text)
     await events.put(("print_finish",""))
@@ -165,27 +165,30 @@ app.router.add_route("GET","/test",test)
 app.router.add_route("GET","/event", eventsource)
 app.router.add_route("GET","/run",run)
 app.router.add_route("GET","/test_sse",test_sse)
-app.add_routes([web.static('/ui', "static")])
+#app.add_routes([web.static('/ui', "static")])
+app.add_routes([web.static('/ui', os.path.dirname(os.path.abspath(__file__))+"/static")])
+# async def runapp(): await web._run_app(app)
+# web.run_app(app)
+# async def main():
+#     import sys
+#     #open initrc.py from args and prase it
+#     code=open(sys.argv[1], "r").read()
+#     initrc=code2function(code)
+#     globals().update(initrc())
+#     while 1:
+#         mcu_command=await mcu_serial.readline_async()
+#         print(mcu_command)
+#         match mcu_command:
+#             case b'start\n':
+#                 image=capture_image()
+#                 text=await run_inference(image) 
+#                 await print_text(text,printer)
+#                 await mcu_serial.write_async(b'ok\n')
 
-async def runapp(): await web._run_app(app)
-web.run_app(app)
-async def main():
-    import sys
-    #open initrc.py from args and prase it
+def main(): #if __name__ == "__main__":
     code=open(sys.argv[1], "r").read()
     initrc=code2function(code)
-    globals().update(initrc())
-    while 1:
-        mcu_command=await mcu_serial.readline_async()
-        print(mcu_command)
-        match mcu_command:
-            case b'start\n':
-                image=capture_image()
-                text=await run_inference(image) 
-                await print_text(text,printer)
-                await mcu_serial.write_async(b'ok\n')
+    globals.update(initrc())
+    web.run_app(app)
 
-if __name__ == "__main__":
-    base_url = "http://127.0.0.1:8000/"
-    asyncio.run(main())
-
+if __name__=="__main__": main()

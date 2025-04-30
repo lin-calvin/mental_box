@@ -3,7 +3,7 @@ app-id: io.github.mentalbox.device
 runtime: org.freedesktop.Platform
 runtime-version: "24.08"
 sdk: org.freedesktop.Sdk
-command: /bin/sh
+command: main
 build-options:
   build-args:
     - --share=network
@@ -29,3 +29,7 @@ modules:
         dest: app
       - type: file
         path: requirements.txt
+      - type: shell
+        dest-filename: main
+        commands:
+          - echo python3 -m client

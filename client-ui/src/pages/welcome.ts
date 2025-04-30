@@ -16,7 +16,7 @@ export class WelcomePage extends LitElement {
     
   }
   async start() {
-    await fetch(BASE_URL + "test");
+    await fetch(BASE_URL + "run");
     
     window.store.dispatch(changeStage(Stage.READING));
   }
@@ -24,14 +24,17 @@ export class WelcomePage extends LitElement {
   render() {
     return html`
       <div class="text-white bg-black h-screen items-center">
-        <div class="flex justify-center items-center h-screen">
+      
+        <div class="flex flex-col justify-center items-center h-screen">
+        <div><p class="text-2xl">单击以开始</p></div>
+        
           <div
             @click="${() => {
               this.start();
             }}"
-            class="mx-auto flex max-w-sm items-center gap-x-4 rounded-xl bg-white p-6 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 hover:bg-sky-700"
+            class="m-5  px-10 mx-auto flex max-w-sm items-center gap-x-4 rounded-xl bg-white p-6 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10 hover:bg-sky-700"
           >
-            <p class="text-xl font-medium font-sans">hello-world!</p>
+            <p class="text-xl font-medium font-sans">Start</p>
           </div>
         </div>
       </div>
