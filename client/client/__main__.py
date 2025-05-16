@@ -3,18 +3,20 @@ import typing
 import aioserial
 import aiohttp
 from aiohttp import web
-from escpos.printer import Escpos
+from escpos.escpos import Escpos
 import asyncio
 import cv2
 import io
 import os
-from sse import aiosselient,Event
+from client.sse import aiosselient,Event
 from aiohttp import web
 from aiohttp_sse import sse_response
 from json import dumps as json_dumps
 import sys
 base_url = "http://127.0.0.1:8000/"
-dummy_mode = False
+DUMMY_PRINTER=0b10
+DUMMY_CAMERA=0b01
+dummy_mode=0
 events=asyncio.Queue()
 devices={}
 class AioPrinter(Escpos):
@@ -99,7 +101,6 @@ def capture_image() -> bytes:
     return buffer.tobytes()
 async def print_text(text, printer: AioPrinter):
     printer.block_text(text,font="0")
-    print(printer.tasks)
     await printer.run_tasks()
 async def run_inference(image_bytes: bytes,):
     res=""
@@ -153,13 +154,14 @@ async def test(_):
     asyncio.create_task(run_inference(cv2.imencode(".png", cv2.imread("a.png"))[1]))
     return web.Response(text="ok")
 async def run(_):
-    if dummy_mode:
-        image=cv2.imencode(".png", cv2.imread("a.png"))
+    if dummy_mode & DUMMY_CAMERA:
+        image=cv2.imencode(".png", cv2.imread("a.png"))[1]
     else:
         image=capture_image()
     text=await run_inference(image)
-    await print_text(text)
-    await events.put(("print_finish",""))
+    if dummy_mode & DUMMY_PRINTER:
+        await print_text(text,printer)
+        await events.put(("print_finish",""))
 app = web.Application()
 app.router.add_route("GET","/test",test)
 app.router.add_route("GET","/event", eventsource)
@@ -188,7 +190,7 @@ app.add_routes([web.static('/ui', os.path.dirname(os.path.abspath(__file__))+"/s
 def main(): #if __name__ == "__main__":
     code=open(sys.argv[1], "r").read()
     initrc=code2function(code)
-    globals.update(initrc())
+    globals().update(initrc())
     web.run_app(app)
 
 if __name__=="__main__": main()
