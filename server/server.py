@@ -139,7 +139,7 @@ async def interface_fn(image):
     ]
     ocr_result=""
 
-    for i in "高中生压力过大怎么办": #await vlm(messages=message,stream=True):
+    async for i in await vlm(messages=message,stream=True):
         print(3)
         data=i
         #data=i.choices[0].delta.content or ""
@@ -163,13 +163,11 @@ async def interface_fn(image):
     print("EMO_MESSAGE:" + str(message))
     # trace it
     result=""
-    for i in "高中生压力大时，可以尝试通过运动、听音乐、与朋友或家人倾诉来放松心情；同时，合理安排学习和休息时间，保证充足睡眠，避免过度疲劳。\n\n\n\n\n":
-        result+=i
+
+    async for  i in await emo_llm(messages=message,stream=True):
+        data=i.choices[0].delta.content or ""
+        result+=data
         yield ('final',result)
-    # async for  i in await emo_llm(messages=message,stream=True):
-    #     data=i.choices[0].delta.content or ""
-    #    result+=data
-    #     yield ('final',result)
 
     record = Record.create(query=ocr_result, output=result)
     asyncio.create_task(tagging_record( record))
