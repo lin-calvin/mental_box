@@ -131,11 +131,11 @@ async def run_inference(image_bytes: bytes,):
 #     printer.profile.profile_data["fonts"]['0']['columns']=30
 #     return locals()
 async def eventsource(request: web.Request) -> web.StreamResponse:
-
+    
+    print("connect")
     async with sse_response(request) as resp:
-        #await resp.send("1")
         while resp.is_connected():
-
+            print(1)
             event_type,data=await events.get()
             await resp.send(json_dumps({"event":event_type,"data":data}))
             #await resp.send(data,event=event_type)
@@ -168,24 +168,4 @@ app.router.add_route("GET","/test_sse",test_sse)
 app.add_routes([web.static('/ui', "static")])
 
 async def runapp(): await web._run_app(app)
-web.run_app(app)
-async def main():
-    import sys
-    #open initrc.py from args and prase it
-    code=open(sys.argv[1], "r").read()
-    initrc=code2function(code)
-    globals().update(initrc())
-    while 1:
-        mcu_command=await mcu_serial.readline_async()
-        print(mcu_command)
-        match mcu_command:
-            case b'start\n':
-                image=capture_image()
-                text=await run_inference(image) 
-                await print_text(text,printer)
-                await mcu_serial.write_async(b'ok\n')
-
-if __name__ == "__main__":
-    base_url = "http://127.0.0.1:8000/"
-    asyncio.run(main())
-
+web.run_app(app,)

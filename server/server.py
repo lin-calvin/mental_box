@@ -141,8 +141,7 @@ async def interface_fn(image):
 
     async for i in await vlm(messages=message,stream=True):
         print(3)
-        data=i
-        #data=i.choices[0].delta.content or ""
+        data=i.choices[0].delta.content or ""
         ocr_result+=data
         yield ('ocr',ocr_result)
     
@@ -268,7 +267,7 @@ def tags_stats() -> typing.List[dict[str,int]]:
             tags[tag.name] = tags.get(tag.name, 0) + 1
     #print([TagStats(tag=tag, count=count) for tag, count in tags.items()])
     return tags# [TagStats(tag=tag, count=count) for tag, count in tags.items()]
-tags_stats()
+
 @app.get("/stream/{id}")
 async def stream(id):
     try:
@@ -285,8 +284,13 @@ async def upload_image(file: UploadFile = File(...),stream: bool = True):
         resp=interface_fn(image)
         if stream:
             async def streamer():
-                async for i in resp:
-                    yield {"event":i[0],"data":i[1]}
+                try:
+                    async for i in resp:
+                        yield {"event":i[0],"data":i[1]}
+                except:
+                    import traceback
+                    traceback.print_exc()
+                    
             pending_task[id:=str(uuid4())]=streamer()
             return id  
         else:

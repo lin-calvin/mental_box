@@ -10,5 +10,8 @@ llm =  make_llm(
 )
 tagging_llm =llm
 emo_llm = llm
+mocking={
+    
+}
 
 db = playhouse.db_url.connect("sqlite:///db.sqlite")
