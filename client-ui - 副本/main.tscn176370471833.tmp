@@ -1,0 +1,56 @@
+[gd_scene load_steps=3 format=3 uid="uid://yqxhbpywlea1"]
+
+[ext_resource type="Script" uid="uid://dhld45urnvgpn" path="res://controller.gd" id="1_ig7tw"]
+[ext_resource type="PackedScene" uid="uid://cau3fmuwa3xwx" path="res://StreamedText.tscn" id="2_0xm2m"]
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+metadata/_edit_horizontal_guides_ = [-263.0]
+
+[node name="Controller" type="Node" parent="."]
+script = ExtResource("1_ig7tw")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 1.0
+offset_right = 3.0
+offset_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="Button" type="Button" parent="."]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 29.0
+offset_right = 191.0
+offset_bottom = 120.0
+text = "start
+"
+
+[node name="StreamedText" parent="." instance=ExtResource("2_0xm2m")]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -404.0
+offset_top = -175.5
+offset_right = 404.0
+offset_bottom = 175.5
+
+[connection signal="on_llm_event" from="Controller" to="StreamedText" method="set_text"]
+[connection signal="on_ocr_event" from="Controller" to="Controller" method="on_text_appear"]
+[connection signal="on_print_finish" from="Controller" to="Controller" method="on_printer_finished"]
+[connection signal="pressed" from="Button" to="Controller" method="start"]

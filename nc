@@ -1,0 +1,6 @@
+GET //event HTTP/1.1
+Accept: text/event-stream
+Host: localhost:8080
+User-Agent: GodotEngine/4.4.1.stable.official (Windows)
+
+

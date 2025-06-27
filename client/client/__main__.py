@@ -73,9 +73,9 @@ class AioPrinter(Escpos):
 
     def close(self) -> None:
 
-        pass
 
 def code2function(code_str: str):
+        pass
     # Create a dictionary to capture the local namespace
     local_namespace = {}
     
@@ -113,7 +113,6 @@ async def run_inference(image_bytes: bytes,):
         async with session.post(os.path.join(base_url,"run"), data=data) as response:
             if response.status != 200:
                 print(await response.text())
-
                 raise Exception(f"error")
             taskid = (await response.json())
         sseclient=aiosselient(os.path.join(base_url,"stream",taskid))
@@ -132,9 +131,8 @@ async def run_inference(image_bytes: bytes,):
 #     printer.profile.profile_data["fonts"]['0']['columns']=30
 #     return locals()
 async def eventsource(request: web.Request) -> web.StreamResponse:
-    print(1234)
     async with sse_response(request) as resp:
-        await resp.send("1")
+        #await resp.send("1")
         while resp.is_connected():
             event_type,data=await events.get()
             await resp.send(json_dumps({"event":event_type,"data":data}))

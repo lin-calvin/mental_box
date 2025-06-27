@@ -1,0 +1,87 @@
+[gd_scene load_steps=7 format=3 uid="uid://yqxhbpywlea1"]
+
+[ext_resource type="Script" uid="uid://dhld45urnvgpn" path="res://controller.gd" id="1_ig7tw"]
+[ext_resource type="PackedScene" uid="uid://cau3fmuwa3xwx" path="res://StreamedText.tscn" id="2_0xm2m"]
+[ext_resource type="Shader" uid="uid://bphix5sxr5yvg" path="res://main.tres" id="4_lquwl"]
+[ext_resource type="Texture2D" uid="uid://cn2dnqnhkdpwa" path="res://welcome.png" id="5_7mycd"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_272bh"]
+shader = ExtResource("4_lquwl")
+shader_parameter/alpha = 0.0
+
+[sub_resource type="GDScript" id="GDScript_5vw27"]
+script/source = "extends TextureButton
+
+
+var t=0;
+var cycle=4;
+var hidding=false;
+func _process(delta: float) -> void:
+	print((sin(t/cycle*2*PI)+1)/2)
+	#$\"../Label\".text=str(1/delta)
+	print(sin(t/cycle*2*PI)+1)
+	if not hidding:
+		material.set_shader_parameter(\"alpha\",(sin(t/cycle*2*PI)+1)/2)
+		t=t+delta;
+	print(1/delta)
+func hide():
+	pass 
+"
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+metadata/_edit_horizontal_guides_ = [-263.0]
+
+[node name="Controller" type="Node" parent="."]
+script = ExtResource("1_ig7tw")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="StreamedText" parent="." instance=ExtResource("2_0xm2m")]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -404.0
+offset_top = -175.5
+offset_right = 404.0
+offset_bottom = 175.5
+
+[node name="Button" type="TextureButton" parent="."]
+material = SubResource("ShaderMaterial_272bh")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture_normal = ExtResource("5_7mycd")
+ignore_texture_size = true
+stretch_mode = 0
+script = SubResource("GDScript_5vw27")
+
+[node name="Label" type="Label" parent="."]
+visible = false
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+
+[connection signal="on_llm_event" from="Controller" to="StreamedText" method="set_text"]
+[connection signal="on_ocr_event" from="Controller" to="Controller" method="on_text_appear"]
+[connection signal="on_print_finish" from="Controller" to="Controller" method="on_printer_finished"]
+[connection signal="pressed" from="Button" to="Controller" method="start"]

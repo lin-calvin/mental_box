@@ -1,10 +1,10 @@
 vlm = make_llm(
-    base_url="https://api.siliconflow.cn/v1/",
+    base_url="http://api.siliconflow.cn/v1/",
     model="openai/Qwen/Qwen2.5-VL-72B-Instruct",
     api_key="sk-whfsgciephkpcjrbmijijiqealycbbycxkwbkwgkyptofbah",
 )
 llm =  make_llm(
-    base_url="https://api.siliconflow.cn/v1/",
+    base_url="http://api.siliconflow.cn/v1/",
     model="openai/Qwen/Qwen2.5-VL-72B-Instruct",
     api_key="sk-whfsgciephkpcjrbmijijiqealycbbycxkwbkwgkyptofbah",
 )
