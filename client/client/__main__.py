@@ -72,10 +72,12 @@ class AioPrinter(Escpos):
         del self.tasks[:]
 
     def close(self) -> None:
+        """Close the printer connection."""
+        if hasattr(self, 'serial') and self.serial:
+            self.serial.close()
 
 
 def code2function(code_str: str):
-        pass
     # Create a dictionary to capture the local namespace
     local_namespace = {}
     
